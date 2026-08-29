@@ -1,24 +1,25 @@
-# UptimeRobot自定义状态页项目
+# QMKJCM 自定义状态页
 
-项目用途：使用EdgeOne Makers托管公开状态页，服务端函数通过环境变量读取UptimeRobot API密钥，浏览器永远不会接触密钥。
+这个项目用于EdgeOne Makers，使用静态页面加Edge Functions展示UptimeRobot监控状态。
 
-目录：
-index.html：公开展示页面
-functions/status.js：状态接口，路径为/api/status
-package.json：项目说明
+目录结构：
+index.html
+edge-functions/api/status.js
+README.txt
 
-部署前必须设置环境变量：
+EdgeOne Makers函数路由：
+edge-functions/api/status.js 会自动对应 /api/status
+
+部署前请在EdgeOne Makers项目环境变量中设置：
 UPTIMEROBOT_API_KEY
 
-不要把真实密钥写入index.html、status.js、package.json、Git仓库或前端JavaScript。
+API密钥只应配置在EdgeOne服务端环境变量中，不要写入HTML、JavaScript前端代码、GitHub仓库或README。
 
-UptimeRobot监控器建议使用以下友好名称：
+页面只公开返回服务名称、状态、响应时间、30天可用率和更新时间，不返回UptimeRobot API密钥、监控器ID、服务器IP或完整内部监控URL。
+
+UptimeRobot监控器建议名称：
 QQ官机平台
 CPA接口服务
 GPT2接口服务
 图片服务
 Webhook服务
-
-接口只返回服务名称、状态、响应时间、30天可用率和更新时间，不返回监控器内部ID、服务器IP、原始URL或API密钥。
-
-注意：EdgeOne Makers的具体函数入口和环境变量配置界面以控制台当前版本为准。如果控制台不支持functions/status.js这种目录约定，需要在Makers中选择边缘函数模板，并将该文件内容粘贴为/api/status函数。
