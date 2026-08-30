@@ -32,14 +32,8 @@ export default async function onRequest(context) {
     if (data.stat !== 'ok' || !Array.isArray(data.monitors)) {
       return new Response(JSON.stringify({ error: 'upstream_auth_or_format' }), { status: 503, headers });
     }
-    // QMKJCM_STATUS_MONITOR_NAMES_20260830：只展示用户明确配置的3个监控器，避免把未知监控器暴露给用户。
-    const publicNames = new Map([
-      ['倾慕云小窝', '倾慕云小窝'],
-      ['倾慕公益API', '倾慕公益API'],
-      ['倾慕慕官机平台', '倾慕慕官机平台']
-    ]);
     const services = data.monitors.map((monitor, index) => ({
-      name: publicNames.get(String(monitor.friendly_name || '').trim()) || `核心服务 ${index + 1}`,
+      name: String(monitor.friendly_name || `核心服务 ${index + 1}`).trim().slice(0, 40),
       status: Number(monitor.status) === 2 ? 'up' : (Number(monitor.status) === 9 || Number(monitor.status) === 0 ? 'down' : 'warn'),
       response_time_ms: Number.isFinite(Number(monitor.response_times?.[0]?.value)) ? Number(monitor.response_times[0].value) : null,
       uptime_30d: typeof monitor.custom_uptime_ratio === 'string' ? monitor.custom_uptime_ratio : null
