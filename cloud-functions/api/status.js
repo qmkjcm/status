@@ -34,6 +34,7 @@ export default async function onRequest(context) {
     }
     const services = data.monitors.map((monitor, index) => ({
       name: String(monitor.friendly_name || `核心服务 ${index + 1}`).trim().slice(0, 40),
+      domain: (() => { try { const host = new URL(String(monitor.url || '')).hostname; return host && !/^\d{1,3}(\.\d{1,3}){3}$/.test(host) ? host.slice(0, 100) : ''; } catch (_) { return ''; } })(),
       status: Number(monitor.status) === 2 ? 'up' : (Number(monitor.status) === 9 || Number(monitor.status) === 0 ? 'down' : 'warn'),
       response_time_ms: Number.isFinite(Number(monitor.response_times?.[0]?.value)) ? Number(monitor.response_times[0].value) : null,
       uptime_30d: typeof monitor.custom_uptime_ratio === 'string' ? monitor.custom_uptime_ratio : null
