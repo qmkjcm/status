@@ -10,7 +10,8 @@ export default async function onRequest(context) {
   const key=typeof env.UPTIMEROBOT_API_KEY==='string'?env.UPTIMEROBOT_API_KEY.trim():'';
   if(!key)return new Response(JSON.stringify({error:'env_missing'}),{status:503,headers});
   try{
-    const body=new URLSearchParams({api_key:key,format:'json',logs:'1',response_times:'1',response_times_limit:'24',custom_uptime_ratios:'1-7-30'});
+    const now=Math.floor(Date.now()/1000);
+    const body=new URLSearchParams({api_key:key,format:'json',logs:'1',response_times:'1',response_times_limit:'1440',response_times_average:'1',response_times_start_date:String(now-86400),response_times_end_date:String(now),custom_uptime_ratios:'1-7-30'});
     const response=await fetch('https://api.uptimerobot.com/v2/getMonitors',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body});
     if(!response.ok)return new Response(JSON.stringify({error:'upstream_http'}),{status:503,headers});
     const data=await response.json();if(data.stat!=='ok'||!Array.isArray(data.monitors))return new Response(JSON.stringify({error:'upstream_auth_or_format'}),{status:503,headers});
@@ -37,6 +38,6 @@ export default async function onRequest(context) {
       const domain=(()=>{try{const h=new URL(String(m.url||'')).hostname;return h&&!/^\d{1,3}(\.\d{1,3}){3}$/.test(h)?h.slice(0,100):''}catch(_){return ''}})();const probe=probeMap.get(domain)||null;
       return {name:String(m.friendly_name||`核心服务 ${index+1}`).trim().slice(0,80),domain,status:Number(m.status)===2?'up':(Number(m.status)===9||Number(m.status)===0?'down':'warn'),type:Number(m.type)===1?'HTTP':(Number(m.type)===2?'关键词':'端口'),interval_seconds:Number(m.interval)||null,average_response_time:Number(m.average_response_time)||null,edge_latency_ms:probe?probe.latency_ms:null,edge_status:probe?probe.status:null,edge_checked_at:probe?probe.checked_at:null,edge_error:probe&&probe.error?probe.error:'',response_times:rt,incidents,uptime_1d:(String(m.custom_uptime_ratio||'').split('-')[0]||null),uptime_7d:(String(m.custom_uptime_ratio||'').split('-')[1]||null),uptime_30d:(String(m.custom_uptime_ratio||'').split('-')[2]||null)};
     });
-    return new Response(JSON.stringify({version:'2026-08-30.4-real',updated_at:new Date().toISOString(),services}),{status:200,headers});
+    return new Response(JSON.stringify({version:'2026-08-30.7-live-external',updated_at:new Date().toISOString(),services}),{status:200,headers});
   }catch(_){return new Response(JSON.stringify({error:'upstream_request_failed'}),{status:503,headers});}
 }
