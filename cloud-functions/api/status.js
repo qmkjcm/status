@@ -26,11 +26,11 @@ export default async function onRequest(context) {
       body
     });
     if (!response.ok) {
-      return new Response(JSON.stringify({ error: 'upstream_http', message: 'monitor provider unavailable' }), { status: 503, headers });
+      return new Response(JSON.stringify({ error: 'upstream_http', upstream_status: response.status }), { status: 503, headers });
     }
     const data = await response.json();
     if (data.stat !== 'ok' || !Array.isArray(data.monitors)) {
-      return new Response(JSON.stringify({ error: 'upstream_auth_or_format', message: 'monitor provider rejected the request' }), { status: 503, headers });
+      return new Response(JSON.stringify({ error: 'upstream_auth_or_format' }), { status: 503, headers });
     }
     const publicNames = new Map([
       ['QQ官机平台', 'QQ官机平台'],
@@ -45,8 +45,8 @@ export default async function onRequest(context) {
       response_time_ms: Number.isFinite(Number(monitor.response_times?.[0]?.value)) ? Number(monitor.response_times[0].value) : null,
       uptime_30d: typeof monitor.custom_uptime_ratio === 'string' ? monitor.custom_uptime_ratio : null
     }));
-    return new Response(JSON.stringify({ version: '2026-08-30.2', updated_at: new Date().toISOString(), services }), { status: 200, headers });
-  } catch (_) {
-    return new Response(JSON.stringify({ error: 'edge_fetch_failed', message: 'monitor provider request failed' }), { status: 503, headers });
+    return new Response(JSON.stringify({ version: '2026-08-30.3-cloud', updated_at: new Date().toISOString(), services }), { status: 200, headers });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'cloud_fetch_failed', reason: error && error.name ? String(error.name) : 'unknown' }), { status: 503, headers });
   }
 }
