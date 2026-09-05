@@ -20,6 +20,35 @@ export default async function onRequest(context) {
   const history = new URL(request.url).searchParams.get('history') === '1';
   const slot = cache[history ? 'history' : 'fast'];
   const key=typeof env.UPTIMEROBOT_API_KEY==='string'?env.UPTIMEROBOT_API_KEY.trim():'';
+  const probeTargets = [
+    ['倾慕云小窝','www.qmkjcm.cn','https://www.qmkjcm.cn/'],
+    ['倾慕公益API','api.qmkjcm.cn','https://api.qmkjcm.cn/'],
+    ['倾慕慕官机平台','qq.qmkjcm.cn','https://qq.qmkjcm.cn/']
+  ];
+  if (!history) {
+    try {
+      if (slot.payload && Date.now() - slot.at < CACHE_TTL_MS) {
+        return new Response(slot.payload,{status:200,headers:{...headers,'x-status-cache':'hit'}});
+      }
+      const checkedAt = new Date().toISOString();
+      const probeResults = await Promise.all(probeTargets.map(async ([name,domain,target]) => {
+        const started = Date.now();
+        try {
+          const response = await withTimeout(fetch(target,{method:'GET',redirect:'follow'}),2200);
+          try { if (response.body && typeof response.body.cancel === 'function') await response.body.cancel(); } catch (_) {}
+          return {name,domain,status:response.status>=200&&response.status<400?'up':'down',latency_ms:Date.now()-started,http_status:response.status};
+        } catch (_) {
+          return {name,domain,status:'down',latency_ms:Date.now()-started,http_status:0};
+        }
+      }));
+      const services = probeResults.map(x => ({name:x.name,domain:x.domain,checked_at:checkedAt,status:x.status,type:'HTTP',interval_seconds:300,average_response_time:x.latency_ms,edge_latency_ms:x.latency_ms,edge_status:x.http_status,edge_checked_at:checkedAt,response_times:[],incidents:[],uptime_30d:null}));
+      const payload = JSON.stringify({version:'2026-09-05.4-probe',updated_at:checkedAt,services});
+      slot.payload=payload; slot.at=Date.now();
+      return new Response(payload,{status:200,headers:{...headers,'x-status-cache':'miss'}});
+    } catch (_) {
+      return new Response(JSON.stringify({error:'probe_failed'}),{status:503,headers});
+    }
+  }
   if(!key)return new Response(JSON.stringify({error:'env_missing'}),{status:503,headers});
   try{
     if (slot.payload && Date.now() - slot.at < CACHE_TTL_MS) {
