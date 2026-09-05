@@ -44,8 +44,8 @@ export default async function onRequest(context) {
     }));
     const probeMap = new Map(probeResults.map(x => [x.domain, x]));
     const services=data.monitors.map((m,index)=>{
-      const rt=Array.isArray(m.response_times)?m.response_times.slice(0,24).map(x=>({at:Number(x.datetime)||0,ms:Number(x.value)||0})).filter(x=>x.at>0&&x.ms>=0):[];
-      const incidents=Array.isArray(m.logs)?m.logs.slice(0,12).map(x=>({type:Number(x.type)===1?'down':'up',at:Number(x.datetime)||0,duration:Number(x.duration)||0,reason:x.reason&&typeof x.reason==='object'?String(x.reason.detail||x.reason.code||''):''})).filter(x=>x.at>0):[];
+      const rt=Array.isArray(m.response_times)?m.response_times.map(x=>({at:Number(x.datetime)||0,ms:Number(x.value)||0})).filter(x=>x.at>0&&x.ms>=0).sort((a,b)=>b.at-a.at).slice(0,24):[];
+      const incidents=Array.isArray(m.logs)?m.logs.map(x=>({type:Number(x.type)===1?'down':'up',at:Number(x.datetime)||0,duration:Number(x.duration)||0,reason:x.reason&&typeof x.reason==='object'?String(x.reason.detail||x.reason.code||''):''})).filter(x=>x.at>0).sort((a,b)=>b.at-a.at).slice(0,12):[];
       const domain=(()=>{try{const h=new URL(String(m.url||'')).hostname;return h&&!/^\d{1,3}(\.\d{1,3}){3}$/.test(h)?h.slice(0,100):''}catch(_){return ''}})();const probe=probeMap.get(domain)||null;
       return {name:String(m.friendly_name||`核心服务 ${index+1}`).trim().slice(0,80),domain,status:Number(m.status)===2?'up':(Number(m.status)===9||Number(m.status)===0?'down':'warn'),type:Number(m.type)===1?'HTTP':(Number(m.type)===2?'关键词':'端口'),interval_seconds:Number(m.interval)||null,average_response_time:Number(m.average_response_time)||null,edge_latency_ms:probe?probe.latency_ms:null,edge_status:probe?probe.status:null,edge_checked_at:probe?probe.checked_at:null,edge_error:probe&&probe.error?probe.error:'',response_times:rt,incidents,uptime_1d:(String(m.custom_uptime_ratio||'').split('-')[0]||null),uptime_7d:(String(m.custom_uptime_ratio||'').split('-')[1]||null),uptime_30d:(String(m.custom_uptime_ratio||'').split('-')[2]||null)};
     });
