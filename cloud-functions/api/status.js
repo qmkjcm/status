@@ -2,6 +2,13 @@ const CACHE_TTL_MS = 60_000;
 let cachedPayload = null;
 let cachedAt = 0;
 
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+  ]);
+}
+
 export default async function onRequest(context) {
   const request = context.request;
   const env = context.env || {};
@@ -19,7 +26,7 @@ export default async function onRequest(context) {
     }
     const now=Math.floor(Date.now()/1000);
     const body=new URLSearchParams({api_key:key,format:'json',logs:'1',response_times:'1',response_times_limit:'72',response_times_average:'1',response_times_start_date:String(now-86400),response_times_end_date:String(now),custom_uptime_ratios:'1-7-30'});
-    const response=await fetch('https://api.uptimerobot.com/v2/getMonitors',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body});
+    const response=await withTimeout(fetch('https://api.uptimerobot.com/v2/getMonitors',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body}),8000);
     if(!response.ok)return new Response(JSON.stringify({error:'upstream_http'}),{status:503,headers});
     const data=await response.json();if(data.stat!=='ok'||!Array.isArray(data.monitors))return new Response(JSON.stringify({error:'upstream_auth_or_format'}),{status:503,headers});
     const probeTargets = [
@@ -29,16 +36,12 @@ export default async function onRequest(context) {
     ];
     const probeResults = await Promise.all(probeTargets.map(async ([domain, url]) => {
       const started = Date.now();
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2500);
       try {
-        const probe = await fetch(url, { method: 'GET', redirect: 'follow', signal: controller.signal });
+        const probe = await withTimeout(fetch(url, { method: 'GET', redirect: 'follow' }),2500);
         const elapsed = Date.now() - started;
         try { if (probe.body && typeof probe.body.cancel === 'function') await probe.body.cancel(); } catch (_) {}
-        clearTimeout(timeout);
         return { domain, ok: probe.status >= 200 && probe.status < 400, status: probe.status, latency_ms: elapsed, checked_at: new Date().toISOString(), error: '' };
       } catch (error) {
-        clearTimeout(timeout);
         return { domain, ok: false, status: 0, latency_ms: Date.now() - started, checked_at: new Date().toISOString(), error: error && error.name ? String(error.name).slice(0, 40) : 'fetch_error' };
       }
     }));
